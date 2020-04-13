@@ -1,15 +1,8 @@
 package com.panamera.proxy.protocol.http;
 
-import java.io.IOException;
-
-import org.apache.http.ParseException;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.util.EntityUtils;
-
 import com.panamera.proxy.ippool.DefaultIpPool;
-import com.panamera.proxy.ippool.IpPool;
+import com.panamera.proxy.module.forward.ForwardStrategy;
+import com.panamera.proxy.module.forward.HttpClientForwardStrategy;
 
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFutureListener;
@@ -21,6 +14,7 @@ import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
+import io.netty.handler.timeout.IdleStateEvent;
 import io.netty.util.CharsetUtil;
 
 /**
@@ -51,36 +45,25 @@ public class HttpForwardHandler extends SimpleChannelInboundHandler<FullHttpRequ
 			return;
 		}
 
-		String url = request.uri();
-		String param = null;
-		// 分离uri 和参数
-		String paramSplitRes[] = url.split("\\?");
-		if (paramSplitRes.length >= 2) {
-			url = paramSplitRes[0];
-			param = paramSplitRes[1];
-		}
-
-		System.out.println("request.method:" + request.method());
-		System.out.println("request.uri:" + request.uri());
-		System.out.println("request.head :" + request.headers());
-		System.out.println("param :" + param);
-		System.out.println("Remote Address:" + ctx.channel().remoteAddress());
-
 		/* 内置功能 */
 //		String event = request.headers().get("event");
-		String event = request.uri().substring(1, request.uri().length());
+		String event = request.uri();
+		if (event.startsWith("/")) {
+			event = request.uri().substring(1, request.uri().length());
+		}
 		if ("list_proxy_ips".equalsIgnoreCase(event)) {
 			listProxyIps(ctx, request);
-			
+
 		} else if ("append_proxy_ips".equalsIgnoreCase(event)) {
 			appendProxyIps(ctx, request);
-			
+
 		} else if ("refresh_proxy_ips".equalsIgnoreCase(event)) {
 			refreshProxyIps(ctx, request);
-			
+
 		} else if ("forward_proxy_server".equalsIgnoreCase(event)) {
-			forwardProxyServer(ctx, request);
-			
+			ForwardStrategy forward = new HttpClientForwardStrategy();
+			ctx.writeAndFlush(forward.proxyForward(request)).addListener(ChannelFutureListener.CLOSE);
+
 		} else {
 			forwardServer(ctx, request);
 		}
@@ -89,8 +72,31 @@ public class HttpForwardHandler extends SimpleChannelInboundHandler<FullHttpRequ
 	@Override
 	public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
 		// TODO Auto-generated method stub
-		System.out.println("Channel[" + ctx.channel() + "]已经好久没收到客户端的消息了！");
-		super.userEventTriggered(ctx, evt);
+		IdleStateEvent event = (IdleStateEvent) evt;
+		switch (event.state()) {
+		case READER_IDLE:
+			System.out.println("Channel[" + ctx.channel() + "]已经好久没收到客户端的消息了！");
+//			eventType = "读空闲";
+//			readIdleTimes++; // 读空闲的计数加1
+			break;
+		case WRITER_IDLE:
+//			eventType = "写空闲";
+			System.out.println("Channel[" + ctx.channel() + "]已经好久没发送客户端的消息了！");
+			// 不处理
+			break;
+		case ALL_IDLE:
+//			eventType = "读写空闲";
+			// 不处理
+			break;
+		}
+		
+//		System.out.println(ctx.channel().remoteAddress() + "超时事件：" +eventType);
+//        if(readIdleTimes > 3){
+//            System.out.println(" [server]读空闲超过3次，关闭连接");
+//            ctx.channel().writeAndFlush("you are out");
+//            ctx.channel().close();
+//        }
+//		super.userEventTriggered(ctx, evt);
 	}
 
 	/**
@@ -129,47 +135,17 @@ public class HttpForwardHandler extends SimpleChannelInboundHandler<FullHttpRequ
 
 	}
 
-	/**
-	 * 通过代理转发请求.<br>
-	 * 当Server接受到http请求后，Server将根据相应的策略(默认按加入顺序)将http请求转发到代理服务器上。<br>
-	 * 代理服务器IP资源来源于Ip池{@link IpPool}。<br>
-	 * 
-	 * @param ctx
-	 * @param request
-	 */
-	private void forwardProxyServer(ChannelHandlerContext ctx, FullHttpRequest request) {
+	private FullHttpResponse getHttpResponse(String content) {
 		// TODO Auto-generated method stub
-		String[] proxyAddress = DefaultIpPool.getInstance().nextIp().split(":");
-		String content = httpClientProxy(proxyAddress[0], Integer.valueOf(proxyAddress[1]));
-		
 		FullHttpResponse response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK,
-				Unpooled.copiedBuffer("forwardProxyServer!\r\n", CharsetUtil.UTF_8));
+				Unpooled.copiedBuffer(content, CharsetUtil.UTF_8));
 		response.headers().set(HttpHeaderNames.CONTENT_TYPE, "text/plain; charset=UTF-8");
-		ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
+		return response;
 	}
 
-	public String httpClientProxy(String proxyHost, int proxyPort) {
-		CloseableHttpClient httpClient = HttpClientUtil.getHttpClient(true, proxyHost, proxyPort, "", "", 1000);
-		HttpGet httpGet = new HttpGet("http://ip111.cn");
-		CloseableHttpResponse response = null;
-		try {
-			response = httpClient.execute(httpGet);
-		} catch (IOException e1) {
-			e1.printStackTrace();
-		}
-		
-		if (200 == response.getStatusLine().getStatusCode()) {
-			try {
-				return EntityUtils.toString(response.getEntity(), "UTF-8");
-			} catch (ParseException | IOException e) {
-				e.printStackTrace();
-			}
-		} else {
-			return null;
-		}
-		
-		return null;
-
-	};
+	private void getHttpResponseAndFlush(ChannelHandlerContext ctx, String content) {
+		// TODO Auto-generated method stub
+		ctx.writeAndFlush(getHttpResponse(content)).addListener(ChannelFutureListener.CLOSE);
+	}
 
 }
