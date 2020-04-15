@@ -4,6 +4,7 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public final class DefaultIpPool implements IpPool {
@@ -11,13 +12,14 @@ public final class DefaultIpPool implements IpPool {
 	private static DefaultIpPool defalutIpPool = null;
 	/**/
 	private List<String> ipList = new CopyOnWriteArrayList<>();
+	
+	private Random random = new Random();
 
 	@Override
 	public String nextIp() {
 		// TODO Auto-generated method stub
-		String ip = ipList.get(0);
-		ipList.remove(0);
-		return ip;
+//		return ipList.remove(0);//remove(index) = get(index) & remove(index);
+		return ipList.get(random.nextInt(ipList.size() + 1));
 	}
 
 	public void refreshIpPool() {
