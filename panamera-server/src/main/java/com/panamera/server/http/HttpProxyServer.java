@@ -7,8 +7,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.panamera.proxy.ippool.DefaultIpPool;
-import com.panamera.proxy.protocol.http.HttpForwardHandler;
 import com.panamera.server.ProxyServer;
+import com.panamera.server.http.handler.HttpForwardHandler;
 
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
@@ -19,14 +19,11 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.codec.http.HttpContentCompressor;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpRequestDecoder;
 import io.netty.handler.codec.http.HttpResponseEncoder;
-import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
-import io.netty.handler.proxy.HttpProxyHandler;
 import io.netty.handler.stream.ChunkedWriteHandler;
 import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.util.HashedWheelTimer;
@@ -41,9 +38,8 @@ public class HttpProxyServer implements ProxyServer {
 	
 	public static void main(String[] args) {
 		new HttpProxyServer().start();
-
+		
 		final HashedWheelTimer timer = new HashedWheelTimer();
-//		final HashedWheelTimer timer = new HashedWheelTimer(5, TimeUnit.SECONDS, 2);
 		timer.newTimeout(new TimerTask() {
 			@Override
 			public void run(Timeout timeout) throws Exception {
@@ -52,14 +48,22 @@ public class HttpProxyServer implements ProxyServer {
 				timer.newTimeout(this, 1, TimeUnit.MINUTES);// 结束时候再次注册
 			}
 		}, 1, TimeUnit.MINUTES);
-		DefaultIpPool.getInstance().refreshIpPool();
+		
+		final HashedWheelTimer check = new HashedWheelTimer();
+		check.newTimeout(new TimerTask() {
+			@Override
+			public void run(Timeout timeout) throws Exception {
+				// TODO Auto-generated method stub
+				DefaultIpPool.getInstance().healthCheck();
+				timer.newTimeout(this, 3, TimeUnit.MINUTES);// 结束时候再次注册
+			}
+		}, 1, TimeUnit.MINUTES);
 	}
 
 	@Override
 	public void start() {
 		// TODO Auto-generated method stub
 		ServerBootstrap server = new ServerBootstrap();
-//		server.group(bossGroup).channel(NioServerSocketChannel.class).handler(new LoggingHandler(LogLevel.INFO))
 		server.group(bossGroup, workerGroup).channel(NioServerSocketChannel.class)
 				.handler(new LoggingHandler(LogLevel.INFO)).childHandler(new ChannelInitializer<SocketChannel>() {
 					@Override
@@ -73,7 +77,6 @@ public class HttpProxyServer implements ProxyServer {
 						logger.info("------Http Request Decoder 解码器初始化完毕，欢迎客户端发起请求访问......");
 						
 						ch.pipeline().addLast("http-aggregator", new HttpObjectAggregator(65536 * 100));
-						ch.pipeline().addLast("idleStateHandler", new IdleStateHandler(3, 0, 0, TimeUnit.MINUTES));
 						
 						ch.pipeline().addLast("http-encoder", new HttpResponseEncoder());
 						logger.info("------Server服务器正在初始化响应解码器......");
@@ -81,6 +84,7 @@ public class HttpProxyServer implements ProxyServer {
 						
 						ch.pipeline().addLast("http-chunked", new ChunkedWriteHandler());
 						ch.pipeline().addLast("http-forward-handler", new HttpForwardHandler());
+						ch.pipeline().addLast("idle-state-handler", new IdleStateHandler(3, 0, 0, TimeUnit.MINUTES));
 //				ch.pipeline().addLast("http-forward-handler", new HttpProxyHandlerr());
 					}
 				}).option(ChannelOption.SO_BACKLOG, 128).option(ChannelOption.SO_KEEPALIVE, true);

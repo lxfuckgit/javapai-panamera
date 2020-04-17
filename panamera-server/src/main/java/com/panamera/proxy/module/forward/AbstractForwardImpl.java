@@ -10,6 +10,10 @@ import io.netty.util.CharsetUtil;
 
 public abstract class AbstractForwardImpl implements ForwardStrategy {
 
+	public FullHttpResponse buildHttpResponse(int status_code, String content) {
+		return buildHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.valueOf(status_code), content);
+	};
+	
 	public FullHttpResponse buildHttpResponse(String http_version, int status_code, String content) {
 		return buildHttpResponse(HttpVersion.valueOf(http_version), HttpResponseStatus.valueOf(status_code), content);
 	};

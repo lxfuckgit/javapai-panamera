@@ -1,4 +1,4 @@
-package com.panamera.proxy.protocol.http;
+package com.panamera.server.http.handler;
 
 import com.panamera.proxy.ippool.DefaultIpPool;
 import com.panamera.proxy.module.forward.ForwardStrategy;
@@ -51,7 +51,14 @@ public class HttpForwardHandler extends SimpleChannelInboundHandler<FullHttpRequ
 		if (event.startsWith("/")) {
 			event = request.uri().substring(1, request.uri().length());
 		}
-		if ("list_proxy_ips".equalsIgnoreCase(event)) {
+		if ("get_proxy_ips".equalsIgnoreCase(event)) {
+//			request.headers().get(HttpHeaderNames.CONTENT_TYPE);
+			FullHttpResponse response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK,
+					Unpooled.copiedBuffer(DefaultIpPool.getInstance().nextIp(), CharsetUtil.UTF_8));
+			response.headers().set(HttpHeaderNames.CONTENT_TYPE, "text/plain; charset=UTF-8");
+			ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
+
+		} else if ("list_proxy_ips".equalsIgnoreCase(event)) {
 			listProxyIps(ctx, request);
 
 		} else if ("append_proxy_ips".equalsIgnoreCase(event)) {

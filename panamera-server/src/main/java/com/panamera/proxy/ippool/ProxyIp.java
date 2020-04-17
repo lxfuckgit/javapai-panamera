@@ -1,0 +1,83 @@
+package com.panamera.proxy.ippool;
+
+public class ProxyIp {
+	/**
+	 * 主机名。
+	 */
+	private String host;
+	/**
+	 * IPV4/IPV6
+	 */
+	private String ip;
+	private int port;
+	private long openTime;
+	private long closeTime;
+
+	public ProxyIp(String host) {
+		super();
+		this.host = host;
+	}
+
+	public ProxyIp(String ip, int port) {
+		super();
+		this.ip = ip;
+		this.port = port;
+	}
+
+	public ProxyIp(String host, String ip, int port) {
+		super();
+		this.host = host;
+		this.ip = ip;
+		this.port = port;
+	}
+
+	public ProxyIp(String host, String ip, int port, long openTime, long closeTime) {
+		super();
+		this.host = host;
+		this.ip = ip;
+		this.port = port;
+		this.openTime = openTime;
+		this.closeTime = closeTime;
+	}
+
+	public String getHost() {
+		return host;
+	}
+
+	public void setHost(String host) {
+		this.host = host;
+	}
+
+	public String getIp() {
+		return ip;
+	}
+
+	public void setIp(String ip) {
+		this.ip = ip;
+	}
+
+	public int getPort() {
+		return port;
+	}
+
+	public void setPort(int port) {
+		this.port = port;
+	}
+
+	public long getOpenTime() {
+		return openTime;
+	}
+
+	public void setOpenTime(long openTime) {
+		this.openTime = openTime;
+	}
+
+	public long getCloseTime() {
+		return closeTime;
+	}
+
+	public void setCloseTime(long closeTime) {
+		this.closeTime = closeTime;
+	}
+
+}
