@@ -2,10 +2,10 @@ package com.panamera.server.http;
 
 import java.util.concurrent.TimeUnit;
 
-import org.panamera.server.config.ServerConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.panamera.common.config.ServerConfig;
 import com.panamera.proxy.ippool.DefaultIpPool;
 import com.panamera.server.ProxyServer;
 import com.panamera.server.http.handler.HttpForwardHandler;
@@ -19,6 +19,7 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.handler.codec.http.HttpContentCompressor;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpRequestDecoder;
 import io.netty.handler.codec.http.HttpResponseEncoder;
@@ -69,23 +70,22 @@ public class HttpProxyServer implements ProxyServer {
 					@Override
 					public void initChannel(SocketChannel ch) throws Exception {
 						ch.pipeline().addLast(new LoggingHandler(LogLevel.INFO));
-//				ch.pipeline().addLast(new HttpServerHandler());
-//				ch.pipeline().addLast("compressor", new HttpContentCompressor());
-//				ch.pipeline().addLast(new HttpServerCodec());
 						ch.pipeline().addLast("http-decoder", new HttpRequestDecoder());
-						logger.info("------Server服务器正在初始化请求解码器......");
-						logger.info("------Http Request Decoder 解码器初始化完毕，欢迎客户端发起请求访问......");
+						logger.debug("------Server服务器正在初始化请求解码器......");
+						logger.debug("------Http Request Decoder 解码器初始化完毕，欢迎客户端发起请求访问......");
 						
+//						ch.pipeline().addLast("http-decoder", new io.netty.handler.codec.http.HttpServerCodec());
 						ch.pipeline().addLast("http-aggregator", new HttpObjectAggregator(65536 * 100));
+						ch.pipeline().addLast("http-compressor", new HttpContentCompressor());
 						
 						ch.pipeline().addLast("http-encoder", new HttpResponseEncoder());
-						logger.info("------Server服务器正在初始化响应解码器......");
-						logger.info("------Http Response Encoder 解码器初始化完毕，随时等待响应客户端请求......");
+						logger.debug("------Server服务器正在初始化响应解码器......");
+						logger.debug("------Http Response Encoder 解码器初始化完毕，随时等待响应客户端请求......");
 						
 						ch.pipeline().addLast("http-chunked", new ChunkedWriteHandler());
 						ch.pipeline().addLast("http-forward-handler", new HttpForwardHandler());
 						ch.pipeline().addLast("idle-state-handler", new IdleStateHandler(3, 0, 0, TimeUnit.MINUTES));
-//				ch.pipeline().addLast("http-forward-handler", new HttpProxyHandlerr());
+//						ch.pipeline().addLast("life-cycle-handler", new com.panamera.server.http.handler.LifeCycleInBoundHandler());
 					}
 				}).option(ChannelOption.SO_BACKLOG, 128).option(ChannelOption.SO_KEEPALIVE, true);
 		
@@ -95,8 +95,10 @@ public class HttpProxyServer implements ProxyServer {
 			// 启动代理监听.
 			Channel channel = server.bind(host, port).sync().channel();
 			logger.info("------HTTP代理服务启动完毕,映射端口:{}", port);
+			logger.info("------please visit：http://{}:{}", host, port);
 			
 			// 监听关闭事件.
+//			channel.closeFuture().sync();
 			channel.closeFuture().addListener((ChannelFutureListener) future -> {
 				channel.deregister();
 				logger.warn("------channel从workerGroup取消注册!!!");
@@ -107,6 +109,8 @@ public class HttpProxyServer implements ProxyServer {
 			// TODO Auto-generated catch block
 			stop();
 			e.printStackTrace();
+		}finally {
+			
 		}
 	}
 
@@ -116,6 +120,7 @@ public class HttpProxyServer implements ProxyServer {
 		// 释放线程资源.
 		bossGroup.shutdownGracefully();
 		workerGroup.shutdownGracefully();
+		logger.warn("-----------Server Accepter Close!---------------");
 	}
 
 }

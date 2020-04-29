@@ -27,7 +27,7 @@ import io.netty.handler.codec.http.HttpMethod;
 public final class HttpClientForwardStrategy extends AbstractForwardImpl implements ForwardStrategy {
 
 	@Override
-	public String normalForward() {
+	public FullHttpResponse normalForward(FullHttpRequest request) {
 		// TODO Auto-generated method stub
 		return null;
 	}
@@ -124,7 +124,7 @@ public final class HttpClientForwardStrategy extends AbstractForwardImpl impleme
 		} catch (ParseException | IOException e) {
 			e.printStackTrace();
 		} finally {
-			fullResponse.release();
+//			fullResponse.release();
 			try {
 //				tempRequest.releaseConnection();
 				tempResponse.close();

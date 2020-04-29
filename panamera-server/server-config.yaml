@@ -1,0 +1,21 @@
+# 代理服务器配置(host&port)
+server-host: 127.0.0.1
+server-port: 11111
+
+# 代理服务器配置(已授权客户端的auth key)
+clients-auth:
+  - kas19kn#fkhDKAsadhk
+  - KAHSKKASdhkajsk211a
+  - jas#HFKfkkhakkdajdL
+  
+# 反向代理目标
+server-upstream:
+  - proxy-host: 172.0.0.1
+    proxy-port: 10050
+
+# 本地服务器host
+#local-host: 127.0.0.1
+# 代理客户端认证密钥client-key
+#client-key: kas19kn#fkhDKAsadhk
+
+registry-server: 101.37.118.103:20181,101.37.20.213:20181,101.37.205.187:20181

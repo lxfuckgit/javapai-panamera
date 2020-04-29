@@ -7,10 +7,14 @@ import io.netty.handler.codec.http.FullHttpResponse;
 
 public interface ForwardStrategy {
 	/**
+	 * 普通(透明)转发。
+	 * 
+	 * <br>
+	 * 保留原请求端的IP。<br>
 	 * 
 	 * @return
 	 */
-	public String normalForward();
+	public FullHttpResponse normalForward(FullHttpRequest request);
 
 	/**
 	 * 通过代理服务器转发请求.<br>

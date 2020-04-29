@@ -23,9 +23,11 @@ public class TargetServerHandler extends ChannelInboundHandlerAdapter {
 		// TODO Auto-generated method stub
 		FullHttpResponse response = (FullHttpResponse) msg;
 //		logger.info("客户端消息：" + msg.toString());
+		logger.info("客户端消息：" + response.content().toString());
 //		logger.info(response.content().toString(io.netty.util.CharsetUtil.UTF_8));
-		/* 4、将target-server返回的msg写入proxy-server. */
-		channel.writeAndFlush(response);
+		/* 4、将<target-server>返回的msg写入<proxy-server>的channel中. */
+//		channel.writeAndFlush(response);
+		channel.writeAndFlush(msg);
 	}
 
 	@Override
